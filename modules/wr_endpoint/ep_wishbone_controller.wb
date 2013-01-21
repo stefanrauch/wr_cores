@@ -1,0 +1,666 @@
+-- -*- Mode: LUA; tab-width: 2 -*-
+
+-------------------------------------------------------------------------------
+-- Title      : Wishbone Register Block (slave)
+-- Project    : White Rabbit MAC/Endpoint
+-------------------------------------------------------------------------------
+-- File       : ep_wishbone_controller.wb
+-- Author     : Tomasz Włostowski
+-- Company    : CERN BE-CO-HT
+-- Created    : 2010-11-18
+-- Last update: 2011-10-18
+-------------------------------------------------------------------------------
+-- Description: Description of all non-PCS endpoint control registers 
+-- for wbgen2 Wishbone slave core generator.
+-------------------------------------------------------------------------------
+--
+-- Copyright (c) 2011 CERN / BE-CO-HT
+--
+-- This source file is free software; you can redistribute it   
+-- and/or modify it under the terms of the GNU Lesser General   
+-- Public License as published by the Free Software Foundation; 
+-- either version 2.1 of the License, or (at your option) any   
+-- later version.                                               
+--
+-- This source is distributed in the hope that it will be       
+-- useful, but WITHOUT ANY WARRANTY; without even the implied   
+-- warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR      
+-- PURPOSE.  See the GNU Lesser General Public License for more 
+-- details.                                                     
+--
+-- You should have received a copy of the GNU Lesser General    
+-- Public License along with this source; if not, download it   
+-- from http://www.gnu.org/licenses/lgpl-2.1l.html
+--
+-------------------------------------------------------------------------------
+
+peripheral {
+
+	name = "WR switch endpoint controller";
+	description = "EP controller";
+	hdl_entity = "ep_wishbone_controller";
+	prefix = "ep";
+
+-- ECR
+	reg {
+		name = "Endpoint Control Register";
+		prefix = "ECR";
+		description = "General endpoint control register";
+		
+			field {
+				name = "Port identifier";
+				description = "Unique port identifier which will be embedded into OOB with the timestamp value";
+				prefix = "PORTID";
+				access_bus = READ_WRITE;
+				access_dev = READ_ONLY;
+				type = SLV;
+				size = 5;
+			};
+	
+			field {
+				name = "Reset event counters";
+				description = "write 1: resets all event counters\n0: no effect";
+				prefix = "rst_cnt";
+				type = MONOSTABLE;
+			};
+
+		field {
+			name = "Transmit path enable";
+			description = "1: TX path is enabled\
+										 0: TX path is disabled";
+			prefix = "TX_EN";
+			access_bus = READ_WRITE;
+			access_dev = READ_ONLY;
+			type = BIT;
+		};
+		
+
+		field {
+			 name = "Receive path enable";
+			 prefix = "RX_en";
+			 description = "1: RX path is enabled\
+			                0: RX path is disabled";
+
+			 access_bus = READ_WRITE;
+			 access_dev = READ_ONLY;
+			 type = BIT;
+		};
+
+    field {
+       name = "Feature present: VLAN tagging";
+       description = "1: this implementation of WR Endpoint supports VLAN processing \
+                         (tagging/untagging). VCR register can be used to control the \
+                         VLAN functionality \
+                      0: no VLAN support compiled";
+       prefix = "FEAT_VLAN";
+       align = 24;
+       type = BIT;
+       access_bus = READ_ONLY;
+       access_dev = WRITE_ONLY;
+    };
+
+
+    field {
+       name = "Feature present: DDMTD phase measurement";
+       description = "1: this implementation of WR Endpoint can do fine phase measurements \
+                         using a DDMTD phase detector\
+                      0: no phase measurement support compiled";
+       prefix = "FEAT_DMTD";
+       type = BIT;
+       access_bus = READ_ONLY;
+       access_dev = WRITE_ONLY;
+    };
+
+    field {
+       name = "Feature present: IEEE1588 timestamper";
+       description = "1: this implementation of WR Endpoint can timestamp packets\
+                      0: no timestamping compiled";
+       prefix = "FEAT_PTP";
+       type = BIT;
+       access_bus = READ_ONLY;
+       access_dev = WRITE_ONLY;
+    };
+
+    field {
+       name = "Feature present: DPI packet classifier";
+       description = "1: this implementation of WR Endpoint includes Deep Packet Inspection packet classifier/filter\
+                      0: no DPI compiled";
+       prefix = "FEAT_DPI";
+       type = BIT;
+       access_bus = READ_ONLY;
+       access_dev = WRITE_ONLY;
+    };
+	};
+ 
+
+
+	reg {
+		 name = "Timestamping Control Register";
+		 description = "Register controlling timestamping features of the endpoint";
+		 prefix = "TSCR";
+			
+		 field {
+				name = "Transmit timestamping enable";
+				description = "1: enables TX timestamping. Endpoints passes timestamps to shared TX timestamping unit\
+				               0: disables TX timestamping";
+				prefix = "EN_TXTS";
+				access_bus = READ_WRITE;
+				access_dev = READ_ONLY;
+				type = BIT;
+			};
+			
+			field {
+				name = "Receive timestamping enable";
+         description = "1: enables RX timestamping. RX timestamps are embedded into OOB field on the fabric interface. Must be enabled if used in a multi-port configuration (e.g. in a switch)\
+											 0: disables RX timestamping";
+				prefix = "EN_RXTS";
+				access_bus = READ_WRITE;
+				access_dev = READ_ONLY;
+				type = BIT;
+			};
+
+			field {
+				 name = "Timestamping counter synchronization start";
+				 prefix = "CS_START";
+				 description = "write 1: starts synchronizing the local PPS counter used for timestamping TX/RX packets with an external pulse provided on pps_i input.\
+                        After synchronization, the CS_DONE flag will be set to 1. The counter value equals to 0 when PPS line is high.\
+				                write 0: no effect";
+				 type = MONOSTABLE;
+				 clock = "tx_clk_i";
+			};
+
+			field {
+				 name = "Timestamping counter synchronization done";
+				 prefix = "CS_DONE";
+				 description = "1: the counter synchronization procedure is done. \
+				                 0: the counter synchronization procedure is pending";
+				 type = BIT;
+				 access_bus = READ_ONLY;
+				 access_dev = WRITE_ONLY;
+				 clock = "tx_clk_i";
+			};
+		};
+	
+		reg {
+			 name = "RX Deframer Control Register";
+			 prefix = "RFCR";
+			 
+			 field {
+					name = "RX accept runts";
+					description = "1: endpoint accepts 'runt' frames (shorter than 64 bytes)\
+					               0: 'runt' frames are dropped";
+					prefix = "A_RUNT";
+					access_bus = READ_WRITE;
+					access_dev = READ_ONLY;
+					type = BIT;
+			 };
+
+			 field {
+					name = "RX accept giants";
+					description = "1: endpoint accepts 'giant' frames (longer than 1516/1522 bytes)\
+					               0: 'giant' frames are dropped";
+					prefix = "A_GIANT";
+					access_bus = READ_WRITE;
+					access_dev = READ_ONLY;
+					type = BIT;
+			 };
+
+			 field {
+					name = "RX accept HP";
+					description = "1: endpoint accepts HP frames\
+					               0: HP frames are dropped";
+					prefix = "A_HP";
+					access_bus = READ_WRITE;
+					access_dev = READ_ONLY;
+					type = BIT;
+			 };
+
+			 field {
+					name = "RX keep CRC";
+					description = "1: endpoint keeps FCS fields on the fabric side\
+					               0: FCS fields are stripped";
+					prefix = "KEEP_CRC";
+					access_bus = READ_WRITE;
+					access_dev = READ_ONLY;
+					type = BIT;
+			 };
+
+       field {
+          name = "RX Fiter HP Priorities";
+          prefix = "HPAP";
+          description = "Map of 802.1q PCP values which qualify the incoming frame as HP. Each bit corresponds to one PCP value (bit 7: PCP == 7, bit 0: PCP == 0).";
+          size = 8;
+          type = SLV;
+					access_bus = READ_WRITE;
+					access_dev = READ_ONLY;
+       };
+
+       field {
+          name = "Maximum receive unit (MRU)";
+          description = "Maximum size of a frame which is considered valid (in bytes)";
+          prefix = "MRU";
+					access_bus = READ_WRITE;
+					access_dev = READ_ONLY;
+					type = SLV;
+          size = 14;
+       };
+		};
+
+		reg {
+			 name = "VLAN control register 0";
+			 prefix = "VCR0";
+
+			 field {
+					name = "RX 802.1q port mode";
+					description = "00: ACCESS port - tags untagged received packets with VID from RX_VID field. Drops all tagged packets not belonging to RX_VID VLAN\
+					               01: TRUNK port - passes only tagged VLAN packets. Drops all untagged packets.\
+					               11: unqualified port - passes all traffic regardless of VLAN configuration";
+					type = SLV;
+					size = 2;
+					align = 2;
+					prefix = "Qmode";
+					access_dev = READ_ONLY;
+					access_bus = READ_WRITE;
+
+			 };
+
+			 field {
+					name = "Force 802.1q priority";
+					description = "1: ignores the 802.1x priority (if 802.1q header is present) and sets it to fixed value\
+					               0: uses priority from 802.1q header";
+					prefix = "FIX_PRIO";
+					type = BIT;
+					access_dev = READ_ONLY;
+					access_bus = READ_WRITE;
+
+
+			 };
+
+			 field {
+					name = "Port-assigned 802.1q priority";
+					description = "Packet priority value for retagging. When FIX_PRIO is 1, the endpoint uses this value as the packet priority. Otherwise, priority value is taken from 802.1q header if it's present. If there is no 802.1q header, the priority is assumed to be PRIO_VAL.";
+					prefix = "PRIO_VAL";
+					type = SLV;
+					size = 3;
+					align = 4;
+					access_dev = READ_ONLY;
+					access_bus = READ_WRITE;
+			 };
+
+			 field {
+					name = "Port-assigned VID";
+					description = "VLAN id value for tagging incoming packets if the port is in ACCESS mode. For TRUNK/unqualified the value of VID is ignored.";
+					prefix = "PVID";
+					type = SLV;
+					align = 16;
+					size = 12;
+					access_dev = READ_ONLY;
+					access_bus = READ_WRITE;
+			 };
+		};
+
+    reg {
+       name = "VLAN Control Register 1";
+       description = "Controls the access to the egress VLAN untagged set.\
+                      Each write can enable (VALUE=1) / disable (VALUE=0) untagging frames\
+                      with given VID";
+                     
+       prefix = "VCR1";
+       
+       field {
+          name = "Egress untagged set bitmap VID";
+          description = "write: the VID to be tagged/untagged\
+                         read: undefined";
+
+          prefix = "VID";
+          type = PASS_THROUGH;
+          size = 12;
+       };
+
+       field {
+          name = "Egress untagged set bitmap value";
+          description = "write 1: frames with matching VID are untagged\
+                         write 0: frames with matching VID are not modified\
+                         read: undefined";
+
+          prefix = "VALUE";
+          type = PASS_THROUGH;
+          size = 1;
+       };
+    };
+
+    reg {
+       name = "Packet Filter Control Register 0";
+       description = "Controls the microcode memory access of the Packet Filter Unit. \
+                      See the Endpoint documentation for more details";
+
+       prefix = "PFCR0";
+       
+       field {
+          name = "Microcode Memory Address";
+          prefix = "MM_ADDR";
+          size = 6;
+          type = PASS_THROUGH;
+       };
+
+       field {
+          size = 1;
+          name = "Microcode Memory Write Enable";
+          prefix = "MM_WRITE";
+          type = PASS_THROUGH;
+       };
+
+       field {
+          type = BIT;
+          name = "Packet Filter Enable";
+          prefix = "ENABLE";
+          access_bus = READ_WRITE;
+          access_dev = READ_ONLY;
+       };
+
+       field {
+          size = 24;
+          name = "Microcode Memory Data (24 MSBs)";
+          prefix = "MM_DATA_MSB";
+          type = PASS_THROUGH;
+       };
+    };
+
+    reg {
+       name = "Packet Filter Control Register 1";
+       description = "Controls the microcode memory access of the Packet Filter Unit. \
+                      See the Endpoint documentation for more details";
+
+       prefix= "PFCR1";
+
+       field{
+          size = 12;
+          name = "Microcode Memory Data (12 LSBs)";
+          prefix = "MM_DATA_LSB";
+          type = PASS_THROUGH;
+       };
+    };
+
+    reg {
+       name = "Traffic Class Assignment Register";
+       description = "Controls the mapping of VLAN priority fields into Swcore's traffic classes.. See Endpoint's documentation for more details.";
+       prefix = "TCAR";
+
+       field { 
+          name = "802.1Q priority tag to Traffic Class map";
+          prefix = "PCP_MAP";
+          description = "Controls the mapping of PCP into Traffic Classes. The mapping algorithm                          is: TC = PCP_MAP[PCP * 3 + 2 : PCP * 3]; ";
+          size = 24;
+          type = SLV;
+          access_bus = READ_WRITE;
+          access_dev = READ_WRITE;
+          load = LOAD_EXT;
+       };
+
+    };
+
+	reg {
+		 name = "Flow Control Register";
+		 description = "";
+		 prefix = "FCR";
+
+		 field {
+				name = "RX Pause enable";
+				description = "1: enable reception of pause frames and TX path throttling \
+                       0: disable reception of pause frames";
+				prefix = "RXPAUSE";
+				access_bus = READ_WRITE;
+				access_dev = READ_WRITE;
+				type = BIT;
+        load = LOAD_EXT;
+		 };
+
+		 field {
+				name = "TX Pause enable";
+				description = "1: enable transmission of pause frames and RX path throttling \
+                       0: disable transmission of pause frames";
+				prefix = "TXPAUSE";
+				access_bus = READ_WRITE;
+				access_dev = READ_WRITE;
+				type = BIT;
+        load = LOAD_EXT;
+		 };
+
+
+		 field {
+				name = "TX pause threshold";
+				description = "Defines the percentage of space occupied in the RX buffer which triggers the transmission of a PAUSE frame. 0 = empty buffer, 255 = full buffer";
+				prefix = "TX_THR";
+				access_bus = READ_WRITE;
+				access_dev = READ_WRITE;
+				type = SLV;
+				size = 8;
+				align = 8;
+        load = LOAD_EXT;
+		 };
+
+		 field {
+				name = "TX pause quanta";
+				description = "Defines the quanta value carried bypause frames sent by the Endpoint";
+				prefix = "TX_QUANTA";
+				access_bus = READ_WRITE;
+				access_dev = READ_WRITE;
+				type = SLV;
+				size = 16;
+				align = 16;
+        load = LOAD_EXT;
+		 };
+	};
+
+		reg {
+			 name = "Endpoint MAC address high part register";
+					prefix = "MACH";
+			 description = "Register containing bits [47:32] of the endpoint's MAC address";
+
+			 field {
+					name = "MAC Address";
+					description = "MAC Address bits [47:32]";
+					type = SLV;
+					size = 16;
+					access_bus = READ_WRITE;
+					access_dev = READ_ONLY;
+			 };
+		};
+
+		reg {
+			 name = "Endpoint MAC address low part register";
+			 description = "Register containing bits [31:0] of the endpoint's MAC address";
+					prefix = "MACL";
+
+			 field {
+					name = "MAC Address";
+					description = "MAC Address bits [31:0]";
+					type = SLV;
+					size = 32;
+					access_bus = READ_WRITE;
+					access_dev = READ_ONLY;
+			 };
+		};
+
+	 reg {
+			name = "MDIO Control Register";
+			description = "Register controlling the read/write operations on the MDIO PHY/PCS interface. Writing to this register clears the READY bit in the MDIO Status Register";
+			
+			prefix = "MDIO_CR";
+
+			field {
+				 name = "MDIO Register Value";
+				 description = "Data word to be written to the MDIO";
+				 prefix = "DATA";
+				 type = PASS_THROUGH;
+				 size = 16;
+			};
+
+			field {
+				 name = "MDIO Register Address";
+				 description = "Address of the MDIO register to be read/written";
+				 prefix = "ADDR";
+				 type = SLV;
+				 size = 8;
+			};
+
+			field {
+				 name = "MDIO Read/Write select";
+				 description = "1 = Performs a write to MDIO register at address ADDR with value DATA\
+				                0 = Reads the value of MDIO register at address ADDR";
+				 prefix = "RW";
+				 align=31;
+				 type = BIT;
+			};
+	 };
+
+	 reg {
+			name = "MDIO Address/Status Register";
+			description = "Register with the current status of the MDIO interface";
+			prefix = "MDIO_ASR";
+
+
+			field {
+				 name = "MDIO Read Value";
+				 description = "The value of the recently read MDIO register.";
+				 prefix = "RDATA";
+				 type = SLV;
+				 size = 16;
+				 access_bus = READ_ONLY;
+				 access_dev = WRITE_ONLY;
+			};
+		
+			field {
+				 name = "MDIO PHY Address";
+				 description = "Address of the PHY on the MDIO bus";
+				 prefix = "PHYAD";
+				 type = SLV;
+				 size = 8;
+				 access_bus = READ_WRITE;
+				 access_dev = READ_ONLY;			
+			};
+
+			field {
+				 name = "MDIO Ready";
+				 description = "1 = MDIO read/write operation is complete (for read operations, that means that RDATA contains a valid value)\
+				                0 = MDIO operation in progress";
+				 prefix = "READY";
+				 align=31;
+				 type = BIT;
+				 access_bus = READ_ONLY;
+				 access_dev = WRITE_ONLY;
+			};
+	 };
+
+	 reg {
+			name = "Identification register";
+			description = "Equal to 0xcafebabe";
+			prefix = "IDCODE";
+			
+			field {
+				 name = "IDCode";
+				 type = CONSTANT;
+				 size = 32;
+				 value = 0xcafebabe;
+			};
+	 };
+
+	 reg { -- FIXME: move to HW ports (in V3) or at least add descriptions
+			name = "Debug/Status register";
+			description = "Some debug stuff";
+			prefix = "DSR";
+			
+			field {
+				 name = "Link status";
+				 prefix = "LSTATUS";
+				 type = BIT;
+				 access_bus = READ_ONLY;
+				 access_dev = WRITE_ONLY;
+			};
+			field {
+				 name = "Link activity";
+				 prefix = "LACT";
+				 type = BIT;
+				 access_bus = READ_WRITE;
+				 access_dev = READ_WRITE;
+				 load = LOAD_EXT;
+
+			};
+	 };
+	
+		reg {
+			name = "DMTD Control Register";
+			prefix = "DMCR";
+
+			field {
+				 name = "DMTD Phase measurement enable";
+				 description = "1: enables DMTD phase measurement";
+				 type = BIT;
+				 prefix = "EN";
+				 access_dev = READ_WRITE;
+				 access_bus = READ_WRITE;
+         load = LOAD_EXT;
+			};
+
+			field {
+				 name = "DMTD averaging samples";
+				 description = "Number of raw DMTD phase samples averaged in every measurement cycle";
+				 prefix = "N_AVG";
+				 type = SLV;
+				 size = 12;
+				 align = 16;
+				 access_dev = READ_WRITE;
+				 access_bus = READ_WRITE;
+         load = LOAD_EXT;
+			};
+	 };
+
+	 reg {
+			name = "DMTD Status register";
+			prefix = "DMSR";
+
+			field {
+				 name = "DMTD Phase shift value";
+				 prefix = "PS_VAL";
+				 size = 24;
+				 type = SLV;
+				 access_dev = WRITE_ONLY;
+				 access_bus = READ_ONLY;
+			};
+
+			field {
+				 name = "DMTD Phase shift value ready";
+				 prefix = "PS_RDY";
+				 type = BIT;
+				 load = LOAD_EXT;
+				 access_dev = READ_WRITE;
+				 access_bus = READ_WRITE;
+			};
+	 };
+
+
+		ram {
+			 name = "Event counters memory";
+			 description = "RMON event counters:\
+			 0x0 : TX PCS buffer underruns\
+			 0x4 : RX PCS invalid 8b10b codes\
+			 0x8 : RX PCS sync lost events\
+			 0xc : RX PCS buffer overruns\
+			 0x10: RX CRC errors\
+			 0x14: RX valid frames\
+			 0x18: RX runt frames\
+			 0x1c: RX giant frames\
+			 0x20: RX PCS errors\
+			 0x24: RX dropped frames";
+
+			 size = 32;
+			 width = 32;
+			 
+			 access_dev = READ_WRITE;
+			 access_bus = READ_WRITE;
+
+			 prefix = "rmon_ram";
+		};
+
+		
+};
